@@ -1,0 +1,268 @@
+<html>
+	<head>
+		<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+		<title>GOBANG</title>
+		<style>
+			body {
+				display: flex;
+				justify-content: center;
+				align-items: center;
+			}
+			#game {
+				position: relative;
+				width: 600px;
+				height: 600px;
+				display: block;
+				background-color: #ddd;
+				box-sizing: border-box;
+			}
+			#game > .chessboard > .lattice {
+				border-right: 1px solid #aaa;
+				border-bottom: 1px solid #aaa;
+				display: inline-flex;
+				box-sizing: border-box;
+			}
+			#game > .chessboard.lattice-12 > .lattice { width: calc(100% / 12); height: calc(100% / 12); }
+			#game > .chessboard.lattice-13 > .lattice { width: calc(100% / 13); height: calc(100% / 13); }
+			#game > .chessboard.lattice-14 > .lattice { width: calc(100% / 14); height: calc(100% / 14); }
+			#game > .chessboard.lattice-15 > .lattice { width: calc(100% / 15); height: calc(100% / 15); }
+			#game > .chessboard.lattice-16 > .lattice { width: calc(100% / 16); height: calc(100% / 16); }
+			#game > .chessboard.lattice-17 > .lattice { width: calc(100% / 17); height: calc(100% / 17); }
+			#game > .chessboard.lattice-18 > .lattice { width: calc(100% / 18); height: calc(100% / 18); }
+			#game > .chessboard.lattice-19 > .lattice { width: calc(100% / 19); height: calc(100% / 19); }
+			#game > .chessboard.lattice-20 > .lattice { width: calc(100% / 20); height: calc(100% / 20); }
+			#game > .chessboard {
+				position: absolute;
+				display: block;
+				width: 100%;
+				height: 100%;
+				border-top: 1px solid #aaa;
+				border-left: 1px solid #aaa;
+				z-index: 1;
+			}
+			#game > .chessmans {
+				position: absolute;
+				display: block;
+				width: 100%;
+				height: 100%;
+				z-index: 2;
+			}
+			#game > .chessmans > .chessman {
+				position: absolute;
+				display: inline-flex;
+				border-radius: 100%;
+			}
+			#game > .chessmans > .chessman.black {
+				background-color: black;
+			}
+			#game > .chessmans > .chessman.white {
+				background-color: white;
+			}
+			.tools {
+				display: flex;
+				justify-content: center;
+			}
+			.tools > button {
+				margin: 0 1rem;
+				border: none;
+				background-color: #eee;
+				padding: .5rem 1rem;
+				font-size: 1rem;
+				cursor: pointer;
+			}
+			.tools > button:hover {
+				background-color: #aaa;
+			}
+		</style>
+	</head>
+	<body>
+		<div class="app">
+			<div id="game">
+				<div id="chessboard" class="chessboard"></div>
+				<div id="chessmans" class="chessmans"></div>
+			</div>
+			<br>	
+			<div class="tools">
+				<button onclick="gobangGame.resetAndInit()">START/RESET</button>
+			</div>
+		</div>
+	</body>
+	<script>
+		console.log('hi!')
+
+		// Class
+		class Gobang {
+
+			constructor(options) {
+				this.options = options
+				this.gobang = document.getElementById(options.canvas || 'gobang')
+				this.chessboard = this.gobang.children[0]
+				this.chessmans = this.gobang.children[1]
+
+				// CHESSBOARD
+				this.gobangStyle = Object.assign({
+					padding: 30,
+					count: 15
+				}, options.gobangStyle || {})
+
+				// CHESSELEMENT
+				this.lattice = {
+					width: (this.gobang.clientWidth - this.gobangStyle.padding * 2) / this.gobangStyle.count,
+					height: (this.gobang.clientHeight - this.gobangStyle.padding * 2) / this.gobangStyle.count
+				}
+
+				// INIT
+				this.resetAndInit()
+			}
+
+			// INIT
+			resetAndInit() {
+
+				const { options } = this
+
+				// 1:black, 2:white
+				this.role = options.role || this.role || 1
+
+				this.win = false
+
+				// front end
+				this.chessmans.onclick = null
+				this.chessmans.innerHTML = ''
+
+				// INIT
+				this.drawChessboard()
+				this.listenDownChessman()
+				this.initChessboardMatrix()
+			}
+
+			// CHESSBOARD
+			initChessboardMatrix() {
+				const checkerboard = []
+				for (let x = 0; x < this.gobangStyle.count + 1; x++) {
+					checkerboard[x] = []
+					for (let y = 0; y < this.gobangStyle.count + 1; y++) {
+						checkerboard[x][y] = 0
+					}
+				}
+				this.checkerboard = checkerboard
+			}
+
+			// Form chessboard
+			drawChessboard() {
+				const { gobangStyle, gobang } = this
+				// web front end
+				const lattices = Array.from({ 
+					length: gobangStyle.count * gobangStyle.count 
+				}, () => `<span class="lattice"></span>`).join('')
+				this.chessboard.className = `chessboard lattice-${gobangStyle.count}`
+				this.chessboard.innerHTML = lattices
+				this.gobang.style.border = `${gobangStyle.padding}px solid #ddd`
+			}
+			
+			// grid
+			drawChessman(x, y, isBlack) {
+				const { gobangStyle, lattice, gobang } = this
+				const newChessman = document.createElement('div')
+				newChessman.setAttribute('id', `x${x}-y${y}-r${isBlack ? 1 : 2}`)
+				newChessman.className = isBlack ? 'chessman black' : 'chessman white'
+				newChessman.style.width = lattice.width * 0.6
+				newChessman.style.height = lattice.height * 0.6
+				newChessman.style.left = (x * lattice.width) - lattice.width * 0.3
+				newChessman.style.top = (y * lattice.height) - lattice.height * 0.3
+				this.chessmans.appendChild(newChessman)
+				// win or loss
+				setTimeout(() => {
+					this.checkReferee(x, y, isBlack ? 1 : 2)
+				}, 0)
+			}
+
+			// move
+			listenDownChessman(isBlack = false) {
+				this.chessmans.onclick = event => {
+
+					// if click on a occupied, break
+					if (event.target.className.includes('chessman ')) {
+						return false
+					}
+
+					let { offsetX: x, offsetY: y } = event
+					x = Math.round(x / this.lattice.width)
+					y = Math.round(y / this.lattice.height)
+
+					// justify blank
+					const effectiveBoard = !!this.checkerboard[x]
+					if (effectiveBoard && 
+							this.checkerboard[x][y] !== undefined && 
+							Object.is(this.checkerboard[x][y], 0)) {
+
+						// after move, update and record
+						this.checkerboard[x][y] = this.role
+						this.drawChessman(x, y, Object.is(this.role, 1))
+
+						// swap the role
+						this.role = Object.is(this.role, 1) ? 2 : 1
+					}
+				}
+			}
+
+			// justify win or lose
+			checkReferee(x, y, role) {
+				if ((x == undefined) || (y == undefined) || (role == undefined)) return
+
+				// mark
+				let countContinuous = 0
+
+				// board record
+				const XContinuous = this.checkerboard.map(x => x[y])
+				const YContinuous = this.checkerboard[x]
+				const S1Continuous = []
+				const S2Continuous = []
+
+				this.checkerboard.forEach((_y, i) => {
+					
+					// direction (1,1)
+					const S1Item = _y[y - (x - i)]
+					if (S1Item !== undefined) {
+						S1Continuous.push(S1Item)
+					}
+
+					// direction (-1,-1)
+					const S2Item = _y[y + (x - i)]
+					if (S2Item !== undefined) {
+						S2Continuous.push(S2Item)
+					}
+				})
+
+				// justify winning
+				;[XContinuous, YContinuous, S1Continuous, S2Continuous].forEach(axis => {
+					if (axis.some((x, i) => axis[i] !== 0 &&
+																	axis[i-2] === axis[i-1] &&
+																	axis[i-1] === axis[i] && 
+																	axis[i] === axis[i+1] && 
+																	axis[i+1] === axis[i+2])) {
+						countContinuous ++
+					}
+				})
+
+				// winning
+				if (countContinuous) {
+					this.chessmans.onclick = null
+					this.win = true
+					alert("CONGRATS! " + (role == 1 ? 'the black' : 'the white') + " " + 'WIN!')
+				}
+			}
+		}
+
+		// example
+		const gobangGame = new Gobang({
+			role: 2,
+			canvas: 'game',
+			gobangStyle: {
+				padding: 30,
+				count: 16
+			}
+		})
+
+		console.log(gobangGame)
+	</script>
+</html>
